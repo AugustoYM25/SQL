@@ -1,3 +1,7 @@
+-- Verifica o departamento do funcionário a partir do ID
+
+
+
 CREATE OR REPLACE 
 FUNCTION RETORNA_SALARIO  (P_ID IN EMPLOYEES.EMPLOYEE_ID%TYPE)
  
