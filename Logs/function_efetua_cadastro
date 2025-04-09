@@ -1,0 +1,91 @@
+CREATE OR REPLACE
+FUNCTION EFETUA_CADASTRO(P_NOME IN USUARIO.NOME%TYPE,
+                        P_EMAIL IN USUARIO.EMAIL%TYPE,
+                        P_SENHA IN USUARIO.SENHA%TYPE)
+ 
+RETURN NUMBER
+ 
+IS
+ 
+V_EMAIL_EXISTE NUMBER(1);
+V_RET NUMBER(4);
+V_SQLERRM VARCHAR2(240);
+SENHA_CRYPTO USUARIO.SENHA%TYPE;
+ 
+BEGIN
+ 
+        IF P_NOME IS NOT NULL AND (LENGTH(P_NOME) > 0 AND LENGTH(P_NOME) <120) THEN -- verifica parametros nome
+ 
+                IF P_SENHA IS NOT NULL AND (LENGTH(P_SENHA) > 7 AND LENGTH(P_SENHA) < 120) THEN -- verifica parametros senha
+ 
+                        IF P_EMAIL IS NOT NULL AND(LENGTH(P_EMAIL) > 0 AND LENGTH(P_EMAIL) <120) THEN -- verifica parametros email
+ 
+                        SELECT COUNT(*) INTO V_EMAIL_EXISTE
+                        FROM USUARIO WHERE EMAIL = P_EMAIL;
+ 
+                                IF V_EMAIL_EXISTE = 0 THEN -- verifica existencia do email
+ 
+                                    SENHA_CRYPTO :=
+                                    RAWTOHEX(DBMS_OBFUSCATION_TOOLKIT.MD5(INPUT => UTL_I18N.STRING_TO_RAW(P_SENHA, 'AL32UTF8')));
+ 
+                                            INSERT INTO USUARIO(ID_USU, NOME, EMAIL, SENHA)
+                                            VALUES(SEQ_USU_ID.NEXTVAL, P_NOME, P_EMAIL, SENHA_CRYPTO);
+                                            V_RET := 0;
+ 
+                                ELSE
+                                V_RET := -996;
+                                END IF;
+ 
+                        ELSE
+                        V_RET := -997;
+                        END IF;
+ 
+                ELSE
+                V_RET := -998;
+                END IF;
+ 
+        ELSE
+        V_RET := -999;
+        END IF;
+ 
+RETURN V_RET;
+ 
+EXCEPTION
+        WHEN OTHERS THEN
+        ROLLBACK;
+        DBMS_OUTPUT.put_line ('Função: '|| $$plsql_unit);
+        DBMS_OUTPUT.PUT_LINE('CODIGO ERRO: ' || SQLCODE);
+        DBMS_OUTPUT.PUT_LINE('DESCRICAO ERRO: ' || SQLERRM);    
+        DBMS_OUTPUT.put_line (DBMS_UTILITY.format_error_backtrace);
+ 
+        V_RET := SQLCODE;
+        V_SQLERRM := SQLERRM;
+ 
+        INSERT INTO LOG_CADASTRO(
+                LOG_ID,
+                NOME_CODIGO,
+                PARAMETROS_ENTRADA,
+                CODIGO_ERRO,
+                DESCRICAO_ERRO,
+                LINHA_ERRO,
+                DTH_REGISTRO,
+                USUARIO,
+                STATUS,
+                DESCRICAO_RESOLVIDO
+            )
+            VALUES
+            (
+                SQ_ID_LOG_CADASTRO.NEXTVAL,
+                'EFETUA_CADASTRO',
+                'P_NOME =' || P_NOME || ',' || ' P_EMAIL = ' ||  P_EMAIL || ',' || ' P_SENHA = ' || P_SENHA,
+                V_RET,
+                V_SQLERRM,
+                DBMS_UTILITY.format_error_backtrace,
+                SYSDATE,
+                USER,
+                'E',
+                NULL
+            );
+ 
+COMMIT;
+END;
